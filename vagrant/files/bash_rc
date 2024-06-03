@@ -1,0 +1,14 @@
+source /etc/bash_completion
+source <(kubectl completion bash)
+alias dp='docker ps -a'
+alias lr='ls -lArthi'
+alias k='kubectl --kubeconfig=/etc/kubernetes/admin.conf'
+complete -o default -F __start_kubectl k
+alias kg='kubectl --kubeconfig=/etc/kubernetes/admin.conf get -o wide'
+complete -o default -F __start_kubectl kg
+alias ka='kubectl --kubeconfig=/etc/kubernetes/admin.conf apply'
+complete -o default -F __start_kubectl ka
+alias kd='kubectl --kubeconfig=/etc/kubernetes/admin.conf describe'
+complete -o default -F __start_kubectl kd
+alias kdel='kubectl --kubeconfig=/etc/kubernetes/admin.conf delete'
+complete -o default -F __start_kubectl kd

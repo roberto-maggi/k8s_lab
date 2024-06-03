@@ -1,0 +1,114 @@
+# VARS
+
+ENV["LC_ALL"] = "en_US.UTF-8"
+
+# MACHINES
+# default installation data
+IMAGE_NAME = "bento/debian-12"
+IMAGE_VER = "202404.23.0"
+DEF_SH="scripts/default.sh"
+PROVIDER="virtualbox"
+# MASTER NODE SETUP
+MASTER="master"
+MASTER_SH="scripts/master.sh"
+MASTER_RAM="2048"
+MASTER_CPU="2"
+M=1
+# WORKER NODE[S] SETUP
+NODE="node-"
+NODE_SH="scripts/node.sh"
+N=2
+NODE_RAM="2048"
+NODE_CPU="2"
+# NETWORK
+IPM="192.168.1.23"
+IPN="192.168.1.24"
+FORWARD="3222"
+MASK="255.255.255.0"
+SSH="22"
+VLAN="KUBE"
+
+
+
+
+
+Vagrant.configure("2") do |config|
+    config.ssh.insert_key = false
+
+	# populate /etc/hosts
+	config.vm.provision "shell", inline: <<-SHELL
+		apt-get update -y
+		echo -e ""#{IPM}1" "master0"" >> /etc/hosts
+		echo -e ""#{IPN}1" "node1"" >> /etc/hosts
+		echo -e ""#{IPN}2" "node2"" >> /etc/hosts
+		echo -e ""
+	SHELL
+      
+	config.vm.box = IMAGE_NAME
+	config.vm.box_version = IMAGE_VER
+	config.ssh.private_key_path = "./keys/id_ed25519"
+	config.ssh.forward_agent = true
+	config.ssh.username = 'vagrant'
+	config.ssh.password = 'vagrant'
+	# config.ssh.username = 'root'
+	# config.ssh.password = 'vagrant'
+	# Disable vbguest installation if plugin available
+	if Vagrant.has_plugin?("vagrant-vbguest")
+		config.vbguest.auto_update = false
+	end
+	Vagrant::Config.run do |config|
+		config.vbguest.iso_path = "~/Downloads/VBoxGuestAdditions_7.0.0.iso" 
+		config.vbguest.iso_path = "http://company.server/VirtualBox/$VBOX_VERSION/VBoxGuestAdditions.iso"
+	end
+
+    (1..M).each do |i|
+		config.vm.define "#{MASTER}#{i}" do |master|
+		 master.vm.network "public_network" ,  ip: "#{IPM}#{i}" ,  netmask: MASK , bridge: "wlp0s20f3"
+		 config.vm.provision "shell",
+			 run: "always",
+			 inline: "ip route del default"
+		 config.vm.provision "shell",
+			 run: "always",
+			 inline: "ip route add 0.0.0.0/0 via 192.168.1.1 dev eth1"
+		 master.vm.synced_folder "../", "/vagrant_data", type: PROVIDER
+		 master.vm.hostname = "#{MASTER}#{i}"
+		#  master.vm.provision "ansible" do |ansible|
+		#     ansible.playbook = "ansible/master-playbook.yml"
+		#  	ansible.inventory_path = "../ansible-kubernetes-bare-metal/inventory/hosts.ini"
+		#      }
+		#  end
+		 config.vm.provider PROVIDER do |master|
+			 master.memory = MASTER_RAM
+			 master.cpus = MASTER_CPU
+		 end
+		 master.vm.provision "shell", path: DEF_SH
+		 master.vm.provision "shell", path: MASTER_SH
+	end
+ end	
+
+    (1..N).each do |i|
+   	    config.vm.define "#{NODE}#{i}" do |node|
+			node.vm.network "public_network" ,  ip: "#{IPN}#{i}" ,  netmask: MASK , bridge: "wlp0s20f3"
+			config.vm.provision "shell",
+    			run: "always",
+    			inline: "ip route del default"
+			config.vm.provision "shell",
+    			run: "always",
+    			inline: "ip route add 0.0.0.0/0 via 192.168.1.1 dev eth1"
+			node.vm.synced_folder "../", "/vagrant_data", type: PROVIDER
+            node.vm.hostname = "#{NODE}#{i}"
+            #node.vm.provision "ansible" do |ansible|
+            #    ansible.playbook = "ansible/node-playbook.yml"
+            #    ansible.extra_vars = {
+            #        node_ip: "#{NODE}#{i}",
+            #    }
+            #end
+			config.vm.provider PROVIDER do |node|
+				node.memory = NODE_RAM
+				node.cpus = NODE_CPU
+			end
+			node.vm.provision "shell", path: DEF_SH
+			node.vm.provision "shell", path: NODE_SH
+        end
+    end
+end

@@ -1,0 +1,11 @@
+source <( kubectl  completion bash)
+alias k=' kubectl '
+alias lr='ls -lArthi'
+complete -o default -F __start_kubectl k
+alias kg=' kubectl  get -o wide'
+complete -o default -F __start_kubectl kg
+alias kd=' kubectl  describe'
+complete -o default -F __start_kubectl kd
+alias ka=' kubectl  apply'
+complete -o default -F __start_kubectl ka
+alias ng='netstat -vatpn | grep'
