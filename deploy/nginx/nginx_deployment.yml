@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 1 # Numero di repliche del pod
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest # Utilizza l'immagine Docker di Nginx più recente
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: storage
+              mountPath: /mnt/data # Monta il PVC su /mnt/data
+            - name: config
+              mountPath: /etc/nginx/conf.d/virtualhost.conf # Monta il file di configurazione del virtual host
+              subPath: virtualhost.conf # Specifica il nome del file nel ConfigMap
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: nginx-pvc # Nome del PVC da utilizzare
+        - name: config
+          configMap:
+            name: nginx-configmap # Nome del ConfigMap
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: 192.168.1.100
+spec:
+  type: LoadBalancer # Espone il servizio su un indirizzo IP esterno
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nginx-pvc
+spec:
+  storageClassName: my-storageclass # Nome dello StorageClass da utilizzare
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi # Quantità di storage richiesta
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-configmap
+data:
+  virtualhost.conf: |
+    # Contenuto del file di configurazione del virtual host
+    server {
+        listen 80;
+        server_name example.com;
+
+        location / {
+            root /mnt/data;  # Utilizza il PVC come root del virtual host
+            index index.html;
+        }
+    }

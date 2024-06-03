@@ -1,0 +1,16 @@
+# secretGenerator:
+#   - name: mysql-pass
+#     literals:
+#       - password=YOUR_PASSWORD
+# resources:
+#   - mysql-deployment.yaml
+#   - wordpress-deployment.yaml
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-pass
+type: kubernetes.io/basic-auth
+stringData:
+  username: root # required field for kubernetes.io/basic-auth
+  password: t0p-Secret # required field for kubernetes.io/basic-auth
